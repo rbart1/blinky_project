@@ -18,8 +18,18 @@
     bool led;
 #endif
 
+#ifdef BUTTON1
+    InterruptIn button(BUTTON1);
+#else
+    bool button;
+#endif
 
 Ticker ticker;
+volatile int clign_inter_index = 0;
+volatile bool update_flag = false;
+
+const std::chrono::milliseconds clign_inter[] = {200ms, 500ms, 1000ms};
+const int NUM_INTERVALS = sizeof(clign_inter) / sizeof(clign_inter[0]);
 
 
 void toggle_led()
@@ -27,11 +37,23 @@ void toggle_led()
     led = !led;
 }
 
+void change_freq() {
+    clign_inter_index = (clign_inter_index + 1) % NUM_INTERVALS;
+    update_flag = true; 
+}
 
 int main() {
-    ticker.attach(&toggle_led, BLINKING_RATE);
+    ticker.attach(&toggle_led, clign_inter[clign_inter_index]);
 
-    while (true) { // Est ici pour garder le thread actif, je peux utiliser par exemple queue.dispatch_forever() à la place du while ! 
-        ThisThread::sleep_for(BLINKING_RATE); 
+    button.fall(&change_freq);
+ 
+    while (true) {
+        if (update_flag) {
+            ticker.attach(&toggle_led, clign_inter[clign_inter_index]);
+            update_flag = false;
+            printf("Nouvelle freq de clignotement: %lld ms\n", clign_inter[clign_inter_index].count());
+        }
+        ThisThread::sleep_for(100ms); 
     }
 }
+ 
