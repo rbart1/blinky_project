@@ -24,18 +24,42 @@
     bool button;
 #endif
 
+Timer button_timer;
+volatile int press_duration = 0;
+volatile bool pressed = false;
+
+
 void toggle_led()
 {
     led = !led;
 }
 
+
+void button_pressed() {
+    button_timer.start();
+    pressed = true;
+}
+ 
+
+void button_released() {
+    button_timer.stop();
+    press_duration = chrono::duration_cast<chrono::milliseconds>(button_timer.elapsed_time()).count();
+    button_timer.reset();
+    pressed = false;
+}
+
 int main()
 {
-    button.fall(&toggle_led);
-    button.rise(&toggle_led);
-
+    button.fall(&button_pressed);
+    button.rise(&button_released);
     while (true) {
-        printf("Alive!\n");
+        if (!pressed && press_duration > 0) {
+            printf("Bouton relache apres %d ms\n", press_duration);
+            press_duration = 0;
+        }
+        led = pressed ? 1 : 0;
+ 
         ThisThread::sleep_for(BLINKING_RATE);
     }
+
 }
